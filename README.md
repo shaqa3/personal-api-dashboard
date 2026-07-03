@@ -41,6 +41,20 @@ Built with **FastAPI** (auto OpenAPI docs), **httpx**, **APScheduler**, and a
 - "Now playing" hero widget + a GitHub activity heatmap.
 - Auto-generated OpenAPI docs at `/docs`.
 
+### GitHub activity heatmap
+
+The heatmap has two modes, chosen automatically:
+
+- **With `GITHUB_TOKEN`** — queries the GraphQL `contributionsCollection` API for
+  the accurate full-year contribution calendar (real per-day counts + yearly
+  total), rendered as a 53-week grid.
+- **Without a token** — derives a ~90-day window from the public events feed.
+  This is a fallback: GitHub returns stripped `PushEvent` payloads for some
+  accounts, so it counts pushes rather than exact commits.
+
+The response exposes `heatmap_source` (`graphql` | `events`) and
+`contributions_last_year` so you can tell which mode produced the data.
+
 ## Endpoints
 
 | Method | Path | Purpose |
@@ -118,7 +132,7 @@ Make sure your portfolio's origin is in the backend's `CORS_ORIGINS`.
 | `REFRESH_INTERVAL_SECONDS` | How often the scheduler refreshes (default 300) |
 | `CORS_ORIGINS` | Comma-separated allowed origins (`*` in dev) |
 | `GITHUB_USERNAME` | Required to enable GitHub; public data needs no token |
-| `GITHUB_TOKEN` | Optional; raises rate limit 60 → 5000 req/hour |
+| `GITHUB_TOKEN` | Optional. Raises rate limit 60 → 5000 req/hour **and** unlocks the accurate full-year contribution heatmap (see below). A classic PAT with `repo` scope or a fine-grained read-only token is plenty. |
 | `WAKATIME_API_KEY` | From WakaTime → Settings → API Key |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `SPOTIFY_REFRESH_TOKEN` | See below |
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` / `STRAVA_REFRESH_TOKEN` | OAuth app with scope `activity:read` |

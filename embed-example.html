@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Now Playing widget — embed example</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0b0d12;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #e7ebf3;
+      }
+      .demo { text-align: center; }
+      .demo h1 { font-weight: 600; letter-spacing: -0.02em; }
+      .demo p { color: #8b93a7; margin-bottom: 28px; }
+    </style>
+  </head>
+  <body>
+    <div class="demo">
+      <h1>My portfolio hero</h1>
+      <p>The widget below is served by the API and updates itself.</p>
+
+      <!-- 1. a target element -->
+      <div id="now-playing"></div>
+
+      <!-- 2. the widget script (point data-api at your deployed backend) -->
+      <script
+        src="http://localhost:8000/static/now-playing.js"
+        data-api="http://localhost:8000"
+        data-target="#now-playing"
+        data-interval="20000"
+      ></script>
+    </div>
+  </body>
+</html>

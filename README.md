@@ -1,5 +1,7 @@
 # Personal API + Status Dashboard
 
+[![CI](https://github.com/shaqa3/personal-api-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/shaqa3/personal-api-dashboard/actions/workflows/ci.yml)
+
 An API that aggregates *my* data from third-party services (GitHub, Spotify,
 WakaTime, Strava) behind a single cached endpoint, with a live React dashboard
 and an embeddable "now playing" widget for a portfolio site.

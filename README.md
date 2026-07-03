@@ -6,6 +6,12 @@ An API that aggregates *my* data from third-party services (GitHub, Spotify,
 WakaTime, Strava) behind a single cached endpoint, with a live React dashboard
 and an embeddable "now playing" widget for a portfolio site.
 
+![Personal API dashboard — GitHub live, other sources degrading gracefully](assets/dashboard.png)
+
+> The shot above runs with only `GITHUB_USERNAME` + `GITHUB_TOKEN` set — GitHub
+> is live (full-year contribution graph) while the other sources show the
+> `disabled` state. Add their credentials to light every card up.
+
 Built with **FastAPI** (auto OpenAPI docs), **httpx**, **APScheduler**, and a
 **Vite + React** frontend.
 

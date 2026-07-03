@@ -154,6 +154,28 @@ Make sure your portfolio's origin is in the backend's `CORS_ORIGINS`.
 4. Put the `refresh_token` from the response into `.env`. The backend swaps it
    for a short-lived access token on every fetch.
 
+### Getting a Strava refresh token
+
+1. Create an app at <https://www.strava.com/settings/api>. Note the **Client ID**
+   and **Client Secret**, and set the **Authorization Callback Domain** to
+   `localhost`.
+2. Authorize with scope `activity:read` (open this in a browser, filling in your
+   client ID):
+   `https://www.strava.com/oauth/authorize?client_id=<ID>&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=activity:read`
+3. Click **Authorize**. The browser redirects to
+   `http://localhost/exchange_token?state=&code=<CODE>&scope=...` (the page won't
+   load — that's fine). Copy the `code` value from the URL.
+4. Exchange the code for tokens:
+   ```bash
+   curl -X POST https://www.strava.com/oauth/token \
+     -d client_id=<ID> \
+     -d client_secret=<SECRET> \
+     -d code=<CODE> \
+     -d grant_type=authorization_code
+   ```
+5. Put the `refresh_token` from the response into `.env`. Strava access tokens
+   expire every ~6 hours; the backend refreshes them automatically on each fetch.
+
 ## Adding a connector
 
 Subclass `Connector` in `backend/app/connectors/`, implement `enabled` and

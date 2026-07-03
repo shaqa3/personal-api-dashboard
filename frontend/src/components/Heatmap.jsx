@@ -1,25 +1,24 @@
 import Card from "./Card.jsx";
 
-const WEEKS = 13; // ~90 days
 const DAY = 86_400_000;
 
 function isoDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-// Build a WEEKS-wide grid ending today. Columns are weeks (Sun-started),
-// rows are weekdays. Returns { cells, max }.
-function buildGrid(heatmap) {
+// Build a `weeks`-wide grid ending today. Columns are weeks (Sun-started),
+// rows are weekdays. Returns { columns, max }.
+function buildGrid(heatmap, weeks) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   // Walk back to the Sunday that starts the earliest visible week.
-  const start = new Date(today.getTime() - (WEEKS * 7 - 1) * DAY);
+  const start = new Date(today.getTime() - (weeks * 7 - 1) * DAY);
   start.setDate(start.getDate() - start.getDay());
 
   const columns = [];
   let max = 0;
   let cursor = new Date(start);
-  for (let w = 0; w < WEEKS + 1; w++) {
+  for (let w = 0; w < weeks + 1; w++) {
     const col = [];
     for (let dow = 0; dow < 7; dow++) {
       const key = isoDate(cursor);
@@ -45,15 +44,21 @@ function level(count, max) {
 }
 
 export default function Heatmap({ source }) {
-  const heatmap = source?.data?.heatmap ?? {};
-  const { columns, max } = buildGrid(heatmap);
-  const total = Object.values(heatmap).reduce((a, b) => a + b, 0);
+  const data = source?.data ?? {};
+  const heatmap = data.heatmap ?? {};
+  const isGraphql = data.heatmap_source === "graphql";
+
+  // Full contribution year (53 weeks) with a token; ~90-day window otherwise.
+  const weeks = isGraphql ? 53 : 13;
+  const { columns, max } = buildGrid(heatmap, weeks);
+
+  const caption = isGraphql
+    ? `${data.contributions_last_year ?? 0} contributions in the last year`
+    : `${Object.values(heatmap).reduce((a, b) => a + b, 0)} pushes in the last ~90 days`;
 
   return (
     <Card title="Activity" icon="▦" source={source}>
-      <p className="hm-caption">
-        {total} commits across the last ~90 days of public pushes
-      </p>
+      <p className="hm-caption">{caption}</p>
       <div className="heatmap">
         {columns.map((col, i) => (
           <div key={i} className="hm-col">

@@ -7,6 +7,22 @@ import httpx
 from .base import Connector, SourceResult
 
 API = "https://api.github.com"
+GRAPHQL = "https://api.github.com/graphql"
+
+CONTRIBUTIONS_QUERY = """
+query($login: String!) {
+  user(login: $login) {
+    contributionsCollection {
+      contributionCalendar {
+        totalContributions
+        weeks {
+          contributionDays { date contributionCount }
+        }
+      }
+    }
+  }
+}
+"""
 
 
 class GitHubConnector(Connector):
@@ -32,6 +48,32 @@ class GitHubConnector(Connector):
             headers["Authorization"] = f"Bearer {self.token}"
         return headers
 
+    async def _contribution_calendar(self, client: httpx.AsyncClient):
+        """Accurate full-year contribution heatmap via the GraphQL API.
+        Requires a token. Returns (heatmap dict of non-zero days, total)."""
+        resp = await client.post(
+            GRAPHQL,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "User-Agent": "personal-api-dashboard",
+            },
+            json={"query": CONTRIBUTIONS_QUERY, "variables": {"login": self.username}},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if body.get("errors"):
+            raise ValueError(body["errors"][0].get("message", "graphql error"))
+
+        calendar = body["data"]["user"]["contributionsCollection"]["contributionCalendar"]
+        heatmap = {
+            day["date"]: day["contributionCount"]
+            for week in calendar["weeks"]
+            for day in week["contributionDays"]
+            if day["contributionCount"] > 0
+        }
+        return heatmap, calendar["totalContributions"]
+
     async def fetch(self, client: httpx.AsyncClient) -> SourceResult:
         headers = self._headers()
 
@@ -56,19 +98,39 @@ class GitHubConnector(Connector):
         for ev in events:
             if ev.get("type") != "PushEvent":
                 continue
-            commits = ev.get("payload", {}).get("commits", [])
-            n = len(commits)
-            if n == 0:
-                continue
+            payload = ev.get("payload", {})
+            commits = payload.get("commits", [])
+            # GitHub sometimes returns a stripped PushEvent payload with no
+            # `commits` array and no `size`. Fall back through: commit count ->
+            # `size` -> 1 (a push happened, count it as activity).
+            if commits:
+                n = len(commits)
+            elif payload.get("size"):
+                n = payload["size"]
+            else:
+                n = 1
             date = ev["created_at"][:10]
             heatmap[date] = heatmap.get(date, 0) + n
             push_commits += n
-            if latest_commit is None and commits:
+            if latest_commit is None:
                 latest_commit = {
-                    "message": commits[-1]["message"].splitlines()[0],
+                    "message": commits[-1]["message"].splitlines()[0]
+                    if commits
+                    else f"pushed to {ev['repo']['name'].split('/')[-1]}",
                     "repo": ev["repo"]["name"],
                     "at": ev["created_at"],
                 }
+
+        # Prefer the accurate full-year contribution calendar when we have a
+        # token; fall back to the events-derived heatmap on any failure.
+        heatmap_source = "events"
+        contributions_last_year = None
+        if self.token:
+            try:
+                heatmap, contributions_last_year = await self._contribution_calendar(client)
+                heatmap_source = "graphql"
+            except Exception:  # noqa: BLE001 - degrade to the events heatmap
+                heatmap_source = "events"
 
         data = {
             "username": self.username,
@@ -82,5 +144,7 @@ class GitHubConnector(Connector):
             "recent_push_commits": push_commits,
             "latest_commit": latest_commit,
             "heatmap": heatmap,
+            "heatmap_source": heatmap_source,
+            "contributions_last_year": contributions_last_year,
         }
         return self.ok(data)
